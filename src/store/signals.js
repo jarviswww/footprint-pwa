@@ -25,6 +25,11 @@ export const todayDistance = computed(() => {
   return total;
 });
 
+// Home & trips
+const savedHome = localStorage.getItem('fp_home_location');
+export const homeLocation = signal(savedHome ? JSON.parse(savedHome) : null);
+export const todayTrips = signal(0);
+
 // Weather
 export const weatherData = signal(null);
 export const weatherOffline = signal(false);

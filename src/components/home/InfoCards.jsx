@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'preact/hooks';
-import { todayDistance, weatherData, weatherOffline, currentPosition, locationDenied, todayCheckins } from '../../store/signals';
+import { todayDistance, weatherData, weatherOffline, currentPosition, locationDenied, todayTrips } from '../../store/signals';
 import { reverseGeocode } from '../../services/nominatim';
 
 function getWeatherIcon(code) {
@@ -19,7 +19,6 @@ export function InfoCards() {
   const weather = weatherData.value;
   const offline = weatherOffline.value;
   const dist = todayDistance.value;
-  const checkins = todayCheckins.value;
   const [streetName, setStreetName] = useState('');
 
   useEffect(() => {
@@ -86,7 +85,7 @@ export function InfoCards() {
         {/* Sub card 1: today distance + checkin count */}
         <div style={{ ...cardStyle, flex: 1 }}>
           <div style={{ fontSize: '20px', fontWeight: 700 }}>{dist.toFixed(1)}</div>
-          <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>公里 · {checkins.length} 打卡</div>
+          <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>公里 · {todayTrips.value} 次出行</div>
         </div>
         {/* Sub card 2: current street/POI name */}
         <div style={{ ...cardStyle, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

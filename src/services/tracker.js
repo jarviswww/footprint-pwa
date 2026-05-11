@@ -1,9 +1,9 @@
 import { db } from '../db/index';
 import { currentPosition, isTracking, locationDenied, todayPoints, currentTrackId } from '../store/signals';
 import { haversineDistance, isValidCoord } from '../utils/geo';
-import { checkSegmentGap } from './trackSegment';
 import { showToast } from '../components/common/Toast';
 import { handleWriteError } from './storageCompression';
+import { onNewPoint as tripOnNewPoint } from './tripCounter';
 
 let watchId = null;
 let lastPoint = null;
@@ -50,24 +50,29 @@ async function onPosition(pos) {
     showToast('足迹追踪已开始');
   }
 
-  await checkSegmentGap(timestamp);
   let trackId = currentTrackId.value;
+  const today = new Date(timestamp).toISOString().slice(0, 10);
 
   if (!trackId) {
-    trackId = await db.tracks.add({
-      date: new Date(timestamp).toISOString().slice(0, 10),
-      startTime: timestamp,
-      endTime: timestamp,
-      distance: 0,
-      pointCount: 0,
-      totalDistance: 0,
-      totalDuration: 0,
-      cityDetected: '',
-      region: '',
-      routeType: 'unknown',
-      isManual: false,
-      createdAt: timestamp
-    });
+    const existing = await db.tracks.where('date').equals(today).first();
+    if (existing) {
+      trackId = existing.id;
+    } else {
+      trackId = await db.tracks.add({
+        date: today,
+        startTime: timestamp,
+        endTime: timestamp,
+        distance: 0,
+        pointCount: 0,
+        totalDistance: 0,
+        totalDuration: 0,
+        cityDetected: '',
+        region: '',
+        routeType: 'unknown',
+        isManual: false,
+        createdAt: timestamp
+      });
+    }
     currentTrackId.value = trackId;
 
     const trackCount = await db.tracks.count();
@@ -92,6 +97,8 @@ async function onPosition(pos) {
     endTime: timestamp,
     pointCount: todayPoints.value.length
   });
+
+  tripOnNewPoint(lat, lng, timestamp);
 }
 
 function onError(err) {

@@ -1,30 +1,36 @@
 import { useState, useEffect } from 'preact/hooks';
-import { getTracksByDate, getCheckinsForTrack } from '../../db/queries';
+import { getTracksByDate } from '../../db/queries';
 import { formatDistance, formatTime } from '../../utils/format';
-import { weatherData } from '../../store/signals';
+import { weatherData, homeLocation } from '../../store/signals';
+import { db } from '../../db/index';
+import { haversineDistance } from '../../utils/geo';
+
+const HOME_RADIUS_KM = 0.05;
+const DEBOUNCE_MS = 2 * 60 * 1000;
 
 export function DaySummary({ date, onViewTrack }) {
-  const [tracks, setTracks] = useState([]);
-  const [checkins, setCheckins] = useState([]);
-  const [regions, setRegions] = useState(0);
+  const [track, setTrack] = useState(null);
+  const [tripCount, setTripCount] = useState(0);
 
   useEffect(() => {
     if (!date) return;
-    getTracksByDate(date).then(async (t) => {
-      setTracks(t);
-      const allCheckins = [];
-      for (const track of t) {
-        const c = await getCheckinsForTrack(track.id);
-        allCheckins.push(...c);
+    getTracksByDate(date).then(async (tracks) => {
+      if (tracks.length === 0) { setTrack(null); setTripCount(0); return; }
+      const t = tracks[0];
+      setTrack(t);
+
+      const home = homeLocation.value;
+      if (home) {
+        const points = await db.trackPoints.where('trackId').equals(t.id).sortBy('timestamp');
+        setTripCount(calcTrips(points, home));
+      } else {
+        setTripCount(0);
       }
-      setCheckins(allCheckins);
-      const uniqueCities = new Set(allCheckins.map(c => c.city).filter(Boolean));
-      setRegions(uniqueCities.size);
     });
   }, [date]);
 
   if (!date) return null;
-  if (tracks.length === 0) {
+  if (!track) {
     return (
       <div style={cardStyle}>
         <p style={{ color: 'var(--text-secondary)', textAlign: 'center' }}>尚无足迹记录</p>
@@ -32,42 +38,32 @@ export function DaySummary({ date, onViewTrack }) {
     );
   }
 
-  const totalDist = tracks.reduce((s, t) => s + (t.distance || 0), 0);
-  const activePeriods = tracks
-    .filter(t => t.startTime && t.endTime)
-    .map(t => `${formatTime(t.startTime)}-${formatTime(t.endTime)}`)
-    .join(', ');
-
   const weather = weatherData.value;
 
   return (
     <div>
-      {/* 运动摘要 card */}
       <div style={cardStyle}>
         <div style={sectionTitle}>运动摘要</div>
         <div style={statsGrid}>
-          <StatItem label="总距离" value={formatDistance(totalDist)} />
-          <StatItem label="打卡点" value={`${checkins.length} 个`} />
-          <StatItem label="区域数" value={`${regions || tracks.length} 个`} />
+          <StatItem label="总距离" value={formatDistance(track.distance || 0)} />
+          <StatItem label="出行次数" value={`${tripCount} 次`} />
+          <StatItem label="时长" value={formatDuration(track.totalDuration)} />
         </div>
-        {activePeriods && (
+        {track.startTime && track.endTime && (
           <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '8px' }}>
-            活跃时段：{activePeriods}
+            活跃时段：{formatTime(track.startTime)} - {formatTime(track.endTime)}
           </div>
         )}
         <div style={{ marginTop: '12px' }}>
-          {tracks.map(track => (
-            <div key={track.id} style={trackRow}>
-              <span style={{ fontSize: '13px' }}>
-                {formatTime(track.startTime)} - {formatTime(track.endTime)}
-              </span>
-              <button onClick={() => onViewTrack(track)} style={viewBtn}>查看轨迹</button>
-            </div>
-          ))}
+          <div style={trackRow}>
+            <span style={{ fontSize: '13px' }}>
+              {formatTime(track.startTime)} - {formatTime(track.endTime)}
+            </span>
+            <button onClick={() => onViewTrack(track)} style={viewBtn}>查看轨迹</button>
+          </div>
         </div>
       </div>
 
-      {/* 环境上下文 card */}
       <div style={{ ...cardStyle, marginTop: '12px' }}>
         <div style={sectionTitle}>环境上下文</div>
         {weather ? (
@@ -78,13 +74,37 @@ export function DaySummary({ date, onViewTrack }) {
             <StatItem label="日落" value={formatSunTime(weather.sunset)} />
           </div>
         ) : (
-          <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-            暂无天气数据
-          </div>
+          <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>暂无天气数据</div>
         )}
       </div>
     </div>
   );
+}
+
+function calcTrips(points, home) {
+  let trips = 0;
+  let away = false;
+  let awayStart = 0;
+  for (const p of points) {
+    const d = haversineDistance(home.lat, home.lng, p.lat, p.lng);
+    if (d > HOME_RADIUS_KM) {
+      if (!away) {
+        if (awayStart === 0) { awayStart = p.timestamp; }
+        else if (p.timestamp - awayStart >= DEBOUNCE_MS) { away = true; trips++; }
+      }
+    } else {
+      away = false;
+      awayStart = 0;
+    }
+  }
+  return trips;
+}
+
+function formatDuration(seconds) {
+  if (!seconds) return '0 分';
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  return h > 0 ? `${h}h ${m}m` : `${m} 分`;
 }
 
 function StatItem({ label, value }) {
@@ -114,41 +134,8 @@ function getWeatherDesc(code) {
   return '未知';
 }
 
-const cardStyle = {
-  background: 'var(--bg-card)',
-  borderRadius: '16px',
-  padding: '16px',
-  margin: '0 16px',
-  boxShadow: 'var(--shadow-card)'
-};
-
-const sectionTitle = {
-  fontSize: '14px',
-  fontWeight: 600,
-  color: 'var(--text-primary)',
-  marginBottom: '12px'
-};
-
-const statsGrid = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(3, 1fr)',
-  gap: '8px'
-};
-
-const trackRow = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  padding: '6px 0',
-  borderTop: '1px solid var(--divider-color)'
-};
-
-const viewBtn = {
-  border: 'none',
-  background: 'var(--color-primary)',
-  color: '#fff',
-  borderRadius: '12px',
-  padding: '4px 12px',
-  fontSize: '12px',
-  cursor: 'pointer'
-};
+const cardStyle = { background: 'var(--bg-card)', borderRadius: '16px', padding: '16px', margin: '0 16px', boxShadow: 'var(--shadow-card)' };
+const sectionTitle = { fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '12px' };
+const statsGrid = { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' };
+const trackRow = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderTop: '1px solid var(--divider-color)' };
+const viewBtn = { border: 'none', background: 'var(--color-primary)', color: '#fff', borderRadius: '12px', padding: '4px 12px', fontSize: '12px', cursor: 'pointer' };

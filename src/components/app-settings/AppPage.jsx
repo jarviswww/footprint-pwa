@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'preact/hooks';
 import { ExportImport } from './ExportImport';
 import { GoalSetting } from './GoalSetting';
+import { HomeSetting } from './HomeSetting';
 import { db } from '../../db/index';
 import { showToast } from '../common/Toast';
 
@@ -44,6 +45,8 @@ export function AppPage() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <ExportImport />
+
+        <HomeSetting />
 
         {/* Data stats */}
         <div style={cardStyle}>
