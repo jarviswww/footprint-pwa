@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'preact/hooks';
 import { getTracksByDate } from '../../db/queries';
 import { formatDistance, formatTime } from '../../utils/format';
-import { weatherData, homeLocation } from '../../store/signals';
+import { weatherData, homeLocation, todayPoints, currentTrackId } from '../../store/signals';
 import { db } from '../../db/index';
 import { haversineDistance } from '../../utils/geo';
 
@@ -16,6 +16,32 @@ export function DaySummary({ date, onViewTrack }) {
 
   useEffect(() => {
     if (!date) return;
+
+    const today = new Date().toISOString().slice(0, 10);
+    const isToday = date === today;
+
+    // For today: show live data from signals (no DB query needed)
+    if (isToday && currentTrackId.value) {
+      const points = todayPoints.value;
+      const home = homeLocation.value;
+      setTripCount(home ? calcTripsFromPoints(points, home) : 0);
+      if (points.length >= 2) {
+        setStraightDist(haversineDistance(points[0].lat, points[0].lng, points[points.length - 1].lat, points[points.length - 1].lng));
+        setSteps(calcStepsFromPoints(points));
+      }
+      // Use live points count as track pointCount
+      setTrack({
+        distance: 0,
+        totalDistance: 0,
+        pointCount: points.length,
+        startTime: points[0]?.timestamp || Date.now(),
+        endTime: points[points.length - 1]?.timestamp || Date.now(),
+        date
+      });
+      return;
+    }
+
+    // For historical dates: query DB
     getTracksByDate(date).then(async (tracks) => {
       if (tracks.length === 0) { setTrack(null); setTripCount(0); setStraightDist(0); setSteps(0); return; }
       const t = tracks[0];
@@ -24,17 +50,17 @@ export function DaySummary({ date, onViewTrack }) {
       const points = await db.trackPoints.where('trackId').equals(t.id).sortBy('timestamp');
 
       const home = homeLocation.value;
-      setTripCount(home ? calcTrips(points, home) : 0);
+      setTripCount(home ? calcTripsFromPoints(points, home) : 0);
 
       if (points.length >= 2) {
         setStraightDist(haversineDistance(points[0].lat, points[0].lng, points[points.length - 1].lat, points[points.length - 1].lng));
-        setSteps(calcSteps(points));
+        setSteps(calcStepsFromPoints(points));
       } else {
         setStraightDist(0);
         setSteps(0);
       }
     });
-  }, [date]);
+  }, [date, todayPoints.value, currentTrackId.value]);
 
   if (!date) return null;
   if (!track) {
@@ -91,7 +117,7 @@ export function DaySummary({ date, onViewTrack }) {
   );
 }
 
-function calcTrips(points, home) {
+function calcTripsFromPoints(points, home) {
   let trips = 0;
   let away = false;
   let awayStart = 0;
@@ -110,7 +136,7 @@ function calcTrips(points, home) {
   return trips;
 }
 
-function calcSteps(points) {
+function calcStepsFromPoints(points) {
   let totalSteps = 0;
   for (let i = 1; i < points.length; i++) {
     const dist = haversineDistance(points[i - 1].lat, points[i - 1].lng, points[i].lat, points[i].lng) * 1000;

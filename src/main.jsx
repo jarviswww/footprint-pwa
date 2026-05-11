@@ -5,7 +5,7 @@ import { initTrackOnColdStart } from './services/trackSegment';
 import { startWeatherPolling } from './services/weather';
 import { startStayDetection } from './services/stayDetector';
 import { startKeepalive } from './services/keepalive';
-import { startTrackUpdater } from './services/trackUpdater';
+import { startMidnightTimer } from './services/midnightTimer';
 import { recalcTripsFromPoints } from './services/tripCounter';
 import { initStepCounter } from './services/stepCounter';
 import { db } from './db/index';
@@ -19,7 +19,7 @@ async function init() {
   startWeatherPolling();
   startStayDetection();
   startKeepalive();
-  startTrackUpdater();
+  startMidnightTimer();
   initStepCounter();
 }
 

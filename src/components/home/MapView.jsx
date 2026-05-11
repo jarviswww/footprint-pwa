@@ -54,6 +54,8 @@ export function MapView() {
       attributionControl: false
     }).setView(initCenter, 15);
 
+    L.control.scale({ position: 'bottomleft', imperial: false, maxWidth: 100 }).addTo(map);
+
     currentLayerRef.current = osmLayer().addTo(map);
     map.on('dragstart', () => { isFollowingMap.value = false; });
 

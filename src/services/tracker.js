@@ -115,17 +115,6 @@ async function onPosition(pos) {
   lastPoint = { lat, lng, timestamp };
   todayPoints.value = [...todayPoints.value, point];
 
-  const current = await db.tracks.get(trackId);
-  const newDist = (current.totalDistance || 0) + addedDist;
-  const newDur = current.endTime ? timestamp - current.startTime : 0;
-  await db.tracks.update(trackId, {
-    endTime: timestamp,
-    pointCount: todayPoints.value.length,
-    totalDistance: newDist,
-    distance: newDist,
-    totalDuration: Math.floor(newDur / 1000)
-  });
-
   tripOnNewPoint(lat, lng, timestamp);
 }
 
