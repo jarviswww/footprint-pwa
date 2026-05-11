@@ -175,9 +175,35 @@ export function MapView() {
     }
   };
 
+  const recenter = () => {
+    const pos = currentPosition.value;
+    if (!pos || !mapInstance.current) return;
+    isFollowingMap.value = true;
+    mapInstance.current.setView([pos.lat, pos.lng], 16);
+  };
+
   return (
     <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
       <div ref={mapRef} style={{ width: '100%', height: '100%', zIndex: 0 }} />
+      <button onClick={recenter} style={{
+        position: 'absolute',
+        bottom: '24px',
+        right: '16px',
+        zIndex: 1000,
+        width: '40px',
+        height: '40px',
+        borderRadius: '50%',
+        border: 'none',
+        background: 'var(--bg-card)',
+        boxShadow: 'var(--shadow-card)',
+        cursor: 'pointer',
+        fontSize: '18px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        ◎
+      </button>
       <button onClick={toggleLayer} style={{
         position: 'absolute',
         top: 'calc(120px + env(safe-area-inset-top))',
