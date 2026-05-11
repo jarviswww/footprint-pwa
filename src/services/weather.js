@@ -8,7 +8,7 @@ export async function fetchWeather() {
 
   if (!pos) {
     try {
-      const ipRes = await fetch('https://ipapi.co/json/');
+      const ipRes = await fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(5000) });
       if (ipRes.ok) {
         const ipData = await ipRes.json();
         pos = { lat: ipData.latitude, lng: ipData.longitude };
@@ -16,15 +16,21 @@ export async function fetchWeather() {
     } catch {}
   }
 
-  if (!pos) return;
+  if (!pos) {
+    weatherOffline.value = true;
+    return;
+  }
 
   const now = Date.now();
-  if (now - lastFetchTime < FETCH_INTERVAL) return;
+  if (now - lastFetchTime < FETCH_INTERVAL && weatherData.value) return;
 
   try {
     const url = `/api/weather?lat=${pos.lat}&lng=${pos.lng}`;
-    const res = await fetch(url);
-    if (!res.ok) return;
+    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) {
+      weatherOffline.value = true;
+      return;
+    }
     const data = await res.json();
 
     weatherData.value = {
@@ -47,5 +53,13 @@ export async function fetchWeather() {
 
 export function startWeatherPolling() {
   fetchWeather();
-  return setInterval(fetchWeather, FETCH_INTERVAL);
+  const intervalId = setInterval(fetchWeather, FETCH_INTERVAL);
+
+  const unsubscribe = currentPosition.subscribe(pos => {
+    if (pos && !weatherData.value) {
+      fetchWeather();
+    }
+  });
+
+  return intervalId;
 }
