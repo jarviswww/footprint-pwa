@@ -7,13 +7,15 @@ const CATEGORY_COLORS = {
   transport: '#9CA3AF', shop: '#4A9EFF', other: '#8A8A8A'
 };
 
+const TILE_SIZE = 256;
+
 export function ShareCard({ track, checkins, date, totalDist, totalDuration }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
     if (!canvasRef.current) return;
     getPointsForTrack(track.id).then(points => {
-      drawMap(canvasRef.current, points, checkins);
+      drawMapWithTiles(canvasRef.current, points, checkins);
     });
   }, [track, checkins]);
 
@@ -64,12 +66,39 @@ export function ShareCard({ track, checkins, date, totalDist, totalDuration }) {
   );
 }
 
-function drawMap(canvas, points, checkins) {
+function latLngToTile(lat, lng, zoom) {
+  const n = Math.pow(2, zoom);
+  const x = ((lng + 180) / 360) * n;
+  const latRad = (lat * Math.PI) / 180;
+  const y = (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n;
+  return { x, y };
+}
+
+function tileToLatLng(tx, ty, zoom) {
+  const n = Math.pow(2, zoom);
+  const lng = (tx / n) * 360 - 180;
+  const latRad = Math.atan(Math.sinh(Math.PI * (1 - (2 * ty) / n)));
+  const lat = (latRad * 180) / Math.PI;
+  return { lat, lng };
+}
+
+function getBoundsZoom(minLat, maxLat, minLng, maxLng, w, h) {
+  for (let z = 18; z >= 1; z--) {
+    const tl = latLngToTile(maxLat, minLng, z);
+    const br = latLngToTile(minLat, maxLng, z);
+    const tilesX = (br.x - tl.x) * TILE_SIZE;
+    const tilesY = (br.y - tl.y) * TILE_SIZE;
+    if (tilesX <= w * 0.8 && tilesY <= h * 0.8) return z;
+  }
+  return 1;
+}
+
+async function drawMapWithTiles(canvas, points, checkins) {
   const ctx = canvas.getContext('2d');
   const w = canvas.width;
   const h = canvas.height;
 
-  ctx.fillStyle = '#16213e';
+  ctx.fillStyle = '#1a1a2e';
   ctx.fillRect(0, 0, w, h);
 
   if (points.length === 0) return;
@@ -79,40 +108,81 @@ function drawMap(canvas, points, checkins) {
   const minLat = Math.min(...lats), maxLat = Math.max(...lats);
   const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
 
-  const pad = 80;
-  const latRange = maxLat - minLat || 0.001;
-  const lngRange = maxLng - minLng || 0.001;
+  const padLat = (maxLat - minLat) * 0.15 || 0.002;
+  const padLng = (maxLng - minLng) * 0.15 || 0.002;
 
-  const toX = (lng) => pad + ((lng - minLng) / lngRange) * (w - 2 * pad);
-  const toY = (lat) => h - pad - ((lat - minLat) / latRange) * (h - 2 * pad);
+  const zoom = getBoundsZoom(minLat - padLat, maxLat + padLat, minLng - padLng, maxLng + padLng, w, h);
 
-  // Draw grid lines
-  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
-  ctx.lineWidth = 1;
-  for (let i = 0; i <= 4; i++) {
-    const y = pad + (i / 4) * (h - 2 * pad);
-    ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(w - pad, y); ctx.stroke();
-    const x = pad + (i / 4) * (w - 2 * pad);
-    ctx.beginPath(); ctx.moveTo(x, pad); ctx.lineTo(x, h - pad); ctx.stroke();
+  const centerLat = (minLat + maxLat) / 2;
+  const centerLng = (minLng + maxLng) / 2;
+  const centerTile = latLngToTile(centerLat, centerLng, zoom);
+
+  const offsetX = w / 2 - (centerTile.x % 1) * TILE_SIZE;
+  const offsetY = h / 2 - (centerTile.y % 1) * TILE_SIZE;
+  const baseTileX = Math.floor(centerTile.x);
+  const baseTileY = Math.floor(centerTile.y);
+
+  const tilesH = Math.ceil(w / TILE_SIZE) + 2;
+  const tilesV = Math.ceil(h / TILE_SIZE) + 2;
+
+  const tilePromises = [];
+  for (let dy = -Math.floor(tilesV / 2); dy <= Math.floor(tilesV / 2); dy++) {
+    for (let dx = -Math.floor(tilesH / 2); dx <= Math.floor(tilesH / 2); dx++) {
+      const tx = baseTileX + dx;
+      const ty = baseTileY + dy;
+      const px = offsetX + dx * TILE_SIZE;
+      const py = offsetY + dy * TILE_SIZE;
+      tilePromises.push(loadTile(tx, ty, zoom, px, py));
+    }
   }
 
-  // Draw polyline with gradient
-  for (let i = 1; i < points.length; i++) {
-    const progress = i / (points.length - 1);
-    const alpha = 0.4 + 0.6 * progress;
-    ctx.strokeStyle = `rgba(255, 140, 66, ${alpha})`;
-    ctx.lineWidth = 6;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.beginPath();
-    ctx.moveTo(toX(points[i - 1].lng), toY(points[i - 1].lat));
-    ctx.lineTo(toX(points[i].lng), toY(points[i].lat));
-    ctx.stroke();
+  const tiles = await Promise.allSettled(tilePromises);
+  tiles.forEach(result => {
+    if (result.status === 'fulfilled' && result.value) {
+      const { img, px, py } = result.value;
+      ctx.drawImage(img, px, py, TILE_SIZE, TILE_SIZE);
+    }
+  });
+
+  // Dark overlay for contrast
+  ctx.fillStyle = 'rgba(26, 26, 46, 0.4)';
+  ctx.fillRect(0, 0, w, h);
+
+  const toPixel = (lat, lng) => {
+    const t = latLngToTile(lat, lng, zoom);
+    const px = offsetX + (t.x - centerTile.x) * TILE_SIZE + (centerTile.x % 1) * TILE_SIZE;
+    const py = offsetY + (t.y - centerTile.y) * TILE_SIZE + (centerTile.y % 1) * TILE_SIZE;
+    return { x: px, y: py };
+  };
+
+  // Draw polyline
+  ctx.strokeStyle = '#FF8C42';
+  ctx.lineWidth = 6;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  for (let i = 0; i < points.length; i++) {
+    const { x, y } = toPixel(points[i].lat, points[i].lng);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
   }
+  ctx.stroke();
+
+  // Glow effect
+  ctx.strokeStyle = 'rgba(255, 140, 66, 0.3)';
+  ctx.lineWidth = 12;
+  ctx.beginPath();
+  for (let i = 0; i < points.length; i++) {
+    const { x, y } = toPixel(points[i].lat, points[i].lng);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
 
   // Start marker
+  const start = toPixel(points[0].lat, points[0].lng);
   ctx.beginPath();
-  ctx.arc(toX(points[0].lng), toY(points[0].lat), 10, 0, Math.PI * 2);
+  ctx.arc(start.x, start.y, 10, 0, Math.PI * 2);
   ctx.fillStyle = '#fff';
   ctx.fill();
   ctx.strokeStyle = '#FF8C42';
@@ -120,9 +190,9 @@ function drawMap(canvas, points, checkins) {
   ctx.stroke();
 
   // End marker
-  const last = points[points.length - 1];
+  const end = toPixel(points[points.length - 1].lat, points[points.length - 1].lng);
   ctx.beginPath();
-  ctx.arc(toX(last.lng), toY(last.lat), 10, 0, Math.PI * 2);
+  ctx.arc(end.x, end.y, 10, 0, Math.PI * 2);
   ctx.fillStyle = '#FF8C42';
   ctx.fill();
   ctx.strokeStyle = '#fff';
@@ -131,8 +201,7 @@ function drawMap(canvas, points, checkins) {
 
   // Checkin markers
   checkins.slice(0, 5).forEach((c, idx) => {
-    const x = toX(c.lng);
-    const y = toY(c.lat);
+    const { x, y } = toPixel(c.lat, c.lng);
     const color = CATEGORY_COLORS[c.category] || '#8A8A8A';
     ctx.beginPath();
     ctx.arc(x, y, 18, 0, Math.PI * 2);
@@ -146,5 +215,16 @@ function drawMap(canvas, points, checkins) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(`${idx + 1}`, x, y);
+  });
+}
+
+function loadTile(tx, ty, zoom, px, py) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve({ img, px, py });
+    img.onerror = () => resolve(null);
+    const s = ['a', 'b', 'c'][Math.abs(tx + ty) % 3];
+    img.src = `https://${s}.basemaps.cartocdn.com/dark_all/${zoom}/${tx}/${ty}.png`;
   });
 }

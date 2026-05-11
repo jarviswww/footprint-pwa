@@ -75,8 +75,10 @@ export function Charts({ tracks, filter }) {
   }
 
   return (
-    <div style={{ padding: '16px', height: '250px' }}>
-      <canvas ref={canvasRef} />
+    <div style={{ padding: '16px' }}>
+      <div style={{ position: 'relative', width: '100%', height: '250px' }}>
+        <canvas ref={canvasRef} style={{ width: '100%', height: '100%' }} />
+      </div>
     </div>
   );
 }

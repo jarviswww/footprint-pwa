@@ -9,7 +9,7 @@ let watchId = null;
 let lastPoint = null;
 
 const ACCURACY_THRESHOLD = 100;
-const MIN_DISTANCE_M = 10;
+const MIN_DISTANCE_M = 20;
 
 export function startTracking() {
   if (!navigator.geolocation) return;
