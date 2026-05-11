@@ -1,10 +1,17 @@
+import { useState, useEffect } from 'preact/hooks';
 import { todayDistance, weatherData, currentPosition, locationDenied, todayCheckins } from '../../store/signals';
+import { getGoal } from '../../db/queries';
 
 export function InfoCards() {
   const denied = locationDenied.value;
   const weather = weatherData.value;
   const dist = todayDistance.value;
   const checkins = todayCheckins.value;
+  const [goal, setGoal] = useState(null);
+
+  useEffect(() => {
+    getGoal().then(setGoal);
+  }, []);
 
   return (
     <div style={{
@@ -52,10 +59,25 @@ export function InfoCards() {
           <div style={{ fontSize: '20px', fontWeight: 700 }}>{dist.toFixed(1)}</div>
           <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>公里 · {checkins.length} 打卡</div>
         </div>
-        <div style={{ ...cardStyle, flex: 1 }}>
-          <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-            {currentPosition.value ? '记录中...' : '等待定位'}
-          </div>
+        <div style={{ ...cardStyle, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {goal ? (
+            <div style={{ textAlign: 'center' }}>
+              <svg width="44" height="44" viewBox="0 0 44 44">
+                <circle cx="22" cy="22" r="18" fill="none" stroke="var(--divider-color)" stroke-width="4" />
+                <circle cx="22" cy="22" r="18" fill="none" stroke="var(--color-primary)" stroke-width="4"
+                  stroke-dasharray={`${Math.min(1, dist / goal.dailyKm) * 113} 113`}
+                  stroke-linecap="round"
+                  transform="rotate(-90 22 22)" />
+              </svg>
+              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                {Math.round((dist / goal.dailyKm) * 100)}%
+              </div>
+            </div>
+          ) : (
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+              {currentPosition.value ? '记录中...' : '等待定位'}
+            </div>
+          )}
         </div>
       </div>
     </div>
