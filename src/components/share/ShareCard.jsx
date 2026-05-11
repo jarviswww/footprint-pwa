@@ -220,7 +220,7 @@ function loadTile(tx, ty, zoom, px, py) {
     img.crossOrigin = 'anonymous';
     img.onload = () => resolve({ img, px, py });
     img.onerror = () => resolve(null);
-    const s = ['a', 'b', 'c'][Math.abs(tx + ty) % 3];
-    img.src = `https://${s}.tile.openstreetmap.org/${zoom}/${tx}/${ty}.png`;
+    const s = (Math.abs(tx + ty) % 4) + 1;
+    img.src = `https://webrd0${s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x=${tx}&y=${ty}&z=${zoom}`;
   });
 }

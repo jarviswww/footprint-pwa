@@ -22,7 +22,7 @@ export function TrackDetail({ track, onClose, onShare }) {
     if (!track || mapInstance.current) return;
 
     const map = L.map(mapRef.current, { zoomControl: false, attributionControl: false }).setView([39.9, 116.4], 14);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
+    L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', { maxZoom: 18, subdomains: '1234' }).addTo(map);
     mapInstance.current = map;
 
     const isToday = track.id === currentTrackId.value;

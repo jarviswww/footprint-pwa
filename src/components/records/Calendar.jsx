@@ -18,11 +18,25 @@ const HEAT_COLORS = [
 ];
 
 export function Calendar({ onSelectDate }) {
-  const [year, setYear] = useState(new Date().getFullYear());
-  const [month, setMonth] = useState(new Date().getMonth());
+  const today = new Date();
+  const [year, setYear] = useState(today.getFullYear());
+  const [month, setMonth] = useState(today.getMonth());
   const [distanceMap, setDistanceMap] = useState({});
-  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(today.toISOString().slice(0, 10));
   const touchStartX = useRef(0);
+
+  // Sync selectedDate when month changes (user navigates away and back)
+  useEffect(() => {
+    const todayStr = today.toISOString().slice(0, 10);
+    const [ty, tm] = [today.getFullYear(), today.getMonth()];
+    if (year === ty && month === tm) {
+      setSelectedDate(todayStr);
+      onSelectDate(todayStr);
+    } else {
+      setSelectedDate(null);
+      onSelectDate(null);
+    }
+  }, [year, month]);
 
   useEffect(() => {
     const firstDay = `${year}-${String(month + 1).padStart(2, '0')}-01`;
@@ -39,7 +53,7 @@ export function Calendar({ onSelectDate }) {
 
   const firstDayOfWeek = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const today = new Date().toISOString().slice(0, 10);
+  const todayStr = today.toISOString().slice(0, 10);
 
   const monthTotal = Object.values(distanceMap).reduce((s, d) => s + d, 0);
 

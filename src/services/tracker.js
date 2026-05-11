@@ -56,6 +56,11 @@ async function onPosition(pos) {
   currentPosition.value = { lat, lng, accuracy };
   locationDenied.value = false;
 
+  if (accuracy > ACCURACY_THRESHOLD * 0.5 && !localStorage.getItem('fp_accuracy_warn_shown')) {
+    localStorage.setItem('fp_accuracy_warn_shown', '1');
+    showToast('GPS信号较弱，请在空旷处尝试');
+  }
+
   if (!localStorage.getItem('fp_first_location')) {
     localStorage.setItem('fp_first_location', '1');
     showToast('足迹追踪已开始');
@@ -93,6 +98,12 @@ async function onPosition(pos) {
     }
   }
 
+  const prevPoint = todayPoints.value[todayPoints.value.length - 1];
+  let addedDist = 0;
+  if (prevPoint) {
+    addedDist = haversineDistance(prevPoint.lat, prevPoint.lng, lat, lng);
+  }
+
   const point = { trackId, lat, lng, accuracy, timestamp };
   try {
     await db.trackPoints.add(point);
@@ -104,9 +115,15 @@ async function onPosition(pos) {
   lastPoint = { lat, lng, timestamp };
   todayPoints.value = [...todayPoints.value, point];
 
+  const current = await db.tracks.get(trackId);
+  const newDist = (current.totalDistance || 0) + addedDist;
+  const newDur = current.endTime ? timestamp - current.startTime : 0;
   await db.tracks.update(trackId, {
     endTime: timestamp,
-    pointCount: todayPoints.value.length
+    pointCount: todayPoints.value.length,
+    totalDistance: newDist,
+    distance: newDist,
+    totalDuration: Math.floor(newDur / 1000)
   });
 
   tripOnNewPoint(lat, lng, timestamp);

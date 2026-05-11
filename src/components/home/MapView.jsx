@@ -3,8 +3,8 @@ import L from 'leaflet';
 import { currentPosition, todayPoints, todayCheckins, isFollowingMap } from '../../store/signals';
 import { getGapSegments } from '../../services/gapFill';
 
-const osmLayer = () => L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, minZoom: 12 });
-const satelliteLayer = () => L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18, minZoom: 12 });
+const osmLayer = () => L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', { maxZoom: 18, minZoom: 12, subdomains: '1234' });
+const satelliteLayer = () => L.tileLayer('https://webst0{s}.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}', { maxZoom: 18, minZoom: 12, subdomains: '1234' });
 
 const CATEGORY_COLORS = {
   attraction: '#FF8C42',
