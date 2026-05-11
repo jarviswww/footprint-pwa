@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import L from 'leaflet';
 import { getPointsForTrack, getCheckinsForTrack } from '../../db/queries';
 import { formatTime } from '../../utils/format';
+import { todayPoints, currentTrackId } from '../../store/signals';
 
 const CATEGORY_COLORS = {
   attraction: '#FF8C42',
@@ -24,23 +25,26 @@ export function TrackDetail({ track, onClose, onShare }) {
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
     mapInstance.current = map;
 
-    getPointsForTrack(track.id).then(points => {
+    const isToday = track.id === currentTrackId.value;
+
+    const loadPoints = isToday
+      ? Promise.resolve(todayPoints.value)
+      : getPointsForTrack(track.id);
+
+    loadPoints.then(points => {
       if (points.length === 0) return;
       const latlngs = points.map(p => [p.lat, p.lng]);
 
-      // Gradient polyline: split into segments, light→dark by time
       const segCount = Math.max(1, Math.floor(points.length / 8));
       for (let i = 0; i < segCount; i++) {
         const s = Math.floor(i * points.length / segCount);
         const e = Math.floor((i + 1) * points.length / segCount);
         const seg = latlngs.slice(s, e + 1);
         const opacity = 0.3 + (0.6 * (i / (segCount - 1 || 1)));
-        L.polyline(seg, { color: '#FF8C42', weight: 4, opacity }).addTo(map);
+        L.polyline(seg, { color: '#FF8C42', weight: 4, opacity, smoothFactor: 1.5, lineCap: 'round', lineJoin: 'round' }).addTo(map);
       }
 
-      // Start marker (hollow)
       L.circleMarker(latlngs[0], { radius: 6, fillColor: '#FFFFFF', fillOpacity: 1, color: '#FF8C42', weight: 3 }).addTo(map);
-      // End marker (solid)
       L.circleMarker(latlngs[latlngs.length - 1], { radius: 6, fillColor: '#FF8C42', fillOpacity: 1, color: '#FFFFFF', weight: 3 }).addTo(map);
 
       map.fitBounds(L.latLngBounds(latlngs), { padding: [50, 50] });

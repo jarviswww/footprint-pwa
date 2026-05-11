@@ -4,6 +4,7 @@ import { haversineDistance, isValidCoord } from '../utils/geo';
 import { showToast } from '../components/common/Toast';
 import { handleWriteError } from './storageCompression';
 import { onNewPoint as tripOnNewPoint } from './tripCounter';
+import { countStep } from './stepCounter';
 
 let watchId = null;
 let lastPoint = null;
@@ -12,7 +13,6 @@ const ACCURACY_THRESHOLD = 100;
 const MIN_DISTANCE_M = 20;
 const WALK_SPEED_MIN = 0.8;
 const WALK_SPEED_MAX = 7.0;
-const STEPS_PER_METER = 1.4;
 
 export function startTracking() {
   if (!navigator.geolocation) return;
@@ -48,9 +48,7 @@ async function onPosition(pos) {
     if (timeDiffH > 0) {
       const speedKmh = (dist / 1000) / timeDiffH;
       if (speedKmh >= WALK_SPEED_MIN && speedKmh <= WALK_SPEED_MAX) {
-        todaySteps.value = todaySteps.value + Math.round(dist * STEPS_PER_METER);
-        localStorage.setItem('fp_today_steps', String(todaySteps.value));
-        localStorage.setItem('fp_today_steps_date', new Date().toISOString().slice(0, 10));
+        countStep(dist);
       }
     }
   }

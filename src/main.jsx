@@ -7,6 +7,7 @@ import { startStayDetection } from './services/stayDetector';
 import { startKeepalive } from './services/keepalive';
 import { startTrackUpdater } from './services/trackUpdater';
 import { recalcTripsFromPoints } from './services/tripCounter';
+import { initStepCounter } from './services/stepCounter';
 import { db } from './db/index';
 import './styles/global.css';
 
@@ -19,6 +20,7 @@ async function init() {
   startStayDetection();
   startKeepalive();
   startTrackUpdater();
+  initStepCounter();
 }
 
 render(<App />, document.getElementById('root'));

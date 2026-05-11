@@ -2,6 +2,8 @@ import { useState } from 'preact/hooks';
 import { exportJSON, exportGPX, importJSON } from '../../utils/export';
 import { showToast } from '../common/Toast';
 import { db } from '../../db/index';
+import { initTrackOnColdStart } from '../../services/trackSegment';
+import { recalcTripsFromPoints } from '../../services/tripCounter';
 
 export function ExportImport() {
   const [importPreview, setImportPreview] = useState(null);
@@ -65,6 +67,8 @@ export function ExportImport() {
     if (!importFile) return;
     try {
       const count = await importJSON(importFile);
+      await initTrackOnColdStart();
+      recalcTripsFromPoints();
       showToast(`导入成功，新增 ${count} 条轨迹`);
     } catch {
       showToast('导入失败');

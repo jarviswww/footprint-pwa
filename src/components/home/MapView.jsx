@@ -15,6 +15,22 @@ const CATEGORY_COLORS = {
   other: '#8A8A8A'
 };
 
+function smoothPath(latlngs) {
+  if (latlngs.length < 3) return latlngs;
+  const result = [latlngs[0]];
+  for (let i = 1; i < latlngs.length - 1; i++) {
+    const prev = latlngs[i - 1];
+    const curr = latlngs[i];
+    const next = latlngs[i + 1];
+    result.push([
+      prev[0] * 0.15 + curr[0] * 0.7 + next[0] * 0.15,
+      prev[1] * 0.15 + curr[1] * 0.7 + next[1] * 0.15
+    ]);
+  }
+  result.push(latlngs[latlngs.length - 1]);
+  return result;
+}
+
 export function MapView() {
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
@@ -30,10 +46,13 @@ export function MapView() {
   useEffect(() => {
     if (mapInstance.current) return;
 
+    const pos = currentPosition.value;
+    const initCenter = pos ? [pos.lat, pos.lng] : [39.9, 116.4];
+
     const map = L.map(mapRef.current, {
       zoomControl: false,
       attributionControl: false
-    }).setView([39.9, 116.4], 15);
+    }).setView(initCenter, 15);
 
     currentLayerRef.current = osmLayer().addTo(map);
     map.on('dragstart', () => { isFollowingMap.value = false; });
@@ -94,16 +113,22 @@ export function MapView() {
 
     if (points.length < 2) return;
 
-    const segmentCount = Math.max(1, Math.floor(points.length / 10));
+    const latlngs = points.map(p => [p.lat, p.lng]);
+    const smoothed = smoothPath(latlngs);
+
+    const segmentCount = Math.max(1, Math.floor(smoothed.length / 20));
     for (let i = 0; i < segmentCount; i++) {
-      const startIdx = Math.floor(i * points.length / segmentCount);
-      const endIdx = Math.floor((i + 1) * points.length / segmentCount);
-      const segPoints = points.slice(startIdx, endIdx + 1).map(p => [p.lat, p.lng]);
+      const startIdx = Math.floor(i * smoothed.length / segmentCount);
+      const endIdx = Math.floor((i + 1) * smoothed.length / segmentCount);
+      const segPoints = smoothed.slice(startIdx, endIdx + 1);
       const opacity = 0.4 + (0.5 * (i / (segmentCount - 1 || 1)));
       L.polyline(segPoints, {
         color: '#FF8C42',
         weight: 4,
-        opacity
+        opacity,
+        smoothFactor: 1.5,
+        lineCap: 'round',
+        lineJoin: 'round'
       }).addTo(polylineGroupRef.current);
     }
 
