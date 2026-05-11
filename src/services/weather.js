@@ -4,14 +4,25 @@ let lastFetchTime = 0;
 const FETCH_INTERVAL = 5 * 60 * 1000;
 
 export async function fetchWeather() {
-  const pos = currentPosition.value;
+  let pos = currentPosition.value;
+
+  if (!pos) {
+    try {
+      const ipRes = await fetch('https://ipapi.co/json/');
+      if (ipRes.ok) {
+        const ipData = await ipRes.json();
+        pos = { lat: ipData.latitude, lng: ipData.longitude };
+      }
+    } catch {}
+  }
+
   if (!pos) return;
 
   const now = Date.now();
   if (now - lastFetchTime < FETCH_INTERVAL) return;
 
   try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${pos.lat}&longitude=${pos.lng}&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset&timezone=auto`;
+    const url = `/api/weather?lat=${pos.lat}&lng=${pos.lng}`;
     const res = await fetch(url);
     if (!res.ok) return;
     const data = await res.json();
