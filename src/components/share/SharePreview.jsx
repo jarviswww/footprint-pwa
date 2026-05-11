@@ -108,8 +108,8 @@ export function SharePreview({ track, checkins: initialCheckins, onClose }) {
   );
 }
 
-const overlayStyle = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 3000, background: 'rgba(0,0,0,0.8)', display: 'flex', flexDirection: 'column', alignItems: 'center', overflow: 'auto', padding: '20px' };
-const closeBtn = { position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', color: '#fff', fontSize: '24px', cursor: 'pointer' };
+const overlayStyle = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 3000, background: 'rgba(0,0,0,0.8)', display: 'flex', flexDirection: 'column', alignItems: 'center', overflow: 'auto', paddingTop: 'calc(20px + env(safe-area-inset-top))', paddingLeft: '20px', paddingRight: '20px', paddingBottom: '20px' };
+const closeBtn = { position: 'absolute', top: 'calc(16px + env(safe-area-inset-top))', right: '16px', background: 'none', border: 'none', color: '#fff', fontSize: '24px', cursor: 'pointer' };
 const checkinRow = { display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '8px', padding: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' };
 const noteInput = { width: '100%', marginTop: '4px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '6px', padding: '4px 8px', fontSize: '12px', color: '#fff', outline: 'none' };
 const removeBtn = { background: 'none', border: 'none', color: '#FF4D6D', cursor: 'pointer', fontSize: '16px', padding: '4px' };
