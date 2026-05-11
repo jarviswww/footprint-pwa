@@ -17,10 +17,8 @@ export async function reverseGeocode(lat, lng) {
   if (wait > 0) await new Promise(r => setTimeout(r, wait));
 
   try {
-    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=16&accept-language=zh`;
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'FootprintPWA/1.0' }
-    });
+    const url = `/api/geocode?lat=${lat}&lng=${lng}`;
+    const res = await fetch(url);
     if (!res.ok) return null;
     const data = await res.json();
     lastRequestTime = Date.now();

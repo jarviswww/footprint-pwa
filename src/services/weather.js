@@ -7,13 +7,10 @@ export async function fetchWeather() {
   let pos = currentPosition.value;
 
   if (!pos) {
-    try {
-      const ipRes = await fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(5000) });
-      if (ipRes.ok) {
-        const ipData = await ipRes.json();
-        pos = { lat: ipData.latitude, lng: ipData.longitude };
-      }
-    } catch {}
+    const stored = localStorage.getItem('fp_home_location');
+    if (stored) {
+      try { pos = JSON.parse(stored); } catch {}
+    }
   }
 
   if (!pos) {
