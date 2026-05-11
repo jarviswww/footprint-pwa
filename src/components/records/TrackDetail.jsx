@@ -89,7 +89,7 @@ export function TrackDetail({ track, onClose, onShare }) {
 }
 
 const closeBtnStyle = {
-  position: 'absolute', top: '16px', right: '16px', zIndex: 2001,
+  position: 'absolute', top: 'calc(16px + env(safe-area-inset-top))', right: '16px', zIndex: 2001,
   width: '36px', height: '36px', borderRadius: '50%', border: 'none',
   background: 'var(--bg-card)', boxShadow: 'var(--shadow-card)', cursor: 'pointer', fontSize: '16px'
 };
