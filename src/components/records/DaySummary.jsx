@@ -11,20 +11,27 @@ const DEBOUNCE_MS = 2 * 60 * 1000;
 export function DaySummary({ date, onViewTrack }) {
   const [track, setTrack] = useState(null);
   const [tripCount, setTripCount] = useState(0);
+  const [straightDist, setStraightDist] = useState(0);
+  const [steps, setSteps] = useState(0);
 
   useEffect(() => {
     if (!date) return;
     getTracksByDate(date).then(async (tracks) => {
-      if (tracks.length === 0) { setTrack(null); setTripCount(0); return; }
+      if (tracks.length === 0) { setTrack(null); setTripCount(0); setStraightDist(0); setSteps(0); return; }
       const t = tracks[0];
       setTrack(t);
 
+      const points = await db.trackPoints.where('trackId').equals(t.id).sortBy('timestamp');
+
       const home = homeLocation.value;
-      if (home) {
-        const points = await db.trackPoints.where('trackId').equals(t.id).sortBy('timestamp');
-        setTripCount(calcTrips(points, home));
+      setTripCount(home ? calcTrips(points, home) : 0);
+
+      if (points.length >= 2) {
+        setStraightDist(haversineDistance(points[0].lat, points[0].lng, points[points.length - 1].lat, points[points.length - 1].lng));
+        setSteps(calcSteps(points));
       } else {
-        setTripCount(0);
+        setStraightDist(0);
+        setSteps(0);
       }
     });
   }, [date]);
@@ -45,9 +52,12 @@ export function DaySummary({ date, onViewTrack }) {
       <div style={cardStyle}>
         <div style={sectionTitle}>运动摘要</div>
         <div style={statsGrid}>
-          <StatItem label="总距离" value={formatDistance(track.distance || 0)} />
-          <StatItem label="出行次数" value={`${tripCount} 次`} />
+          <StatItem label="实际距离" value={formatDistance(track.distance || 0)} />
+          <StatItem label="直线距离" value={formatDistance(straightDist)} />
           <StatItem label="时长" value={formatDuration(track.totalDuration)} />
+          <StatItem label="步数" value={steps.toLocaleString()} />
+          <StatItem label="出行次数" value={`${tripCount} 次`} />
+          <StatItem label="轨迹点" value={`${track.pointCount || 0}`} />
         </div>
         {track.startTime && track.endTime && (
           <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '8px' }}>
@@ -98,6 +108,21 @@ function calcTrips(points, home) {
     }
   }
   return trips;
+}
+
+function calcSteps(points) {
+  let totalSteps = 0;
+  for (let i = 1; i < points.length; i++) {
+    const dist = haversineDistance(points[i - 1].lat, points[i - 1].lng, points[i].lat, points[i].lng) * 1000;
+    const timeDiffH = (points[i].timestamp - points[i - 1].timestamp) / 3600000;
+    if (timeDiffH > 0) {
+      const speedKmh = (dist / 1000) / timeDiffH;
+      if (speedKmh >= 0.8 && speedKmh <= 7.0) {
+        totalSteps += Math.round(dist * 1.4);
+      }
+    }
+  }
+  return totalSteps;
 }
 
 function formatDuration(seconds) {
