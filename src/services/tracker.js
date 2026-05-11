@@ -2,6 +2,8 @@ import { db } from '../db/index';
 import { currentPosition, isTracking, locationDenied, todayPoints, currentTrackId } from '../store/signals';
 import { haversineDistance, isValidCoord } from '../utils/geo';
 import { checkSegmentGap } from './trackSegment';
+import { showToast } from '../components/common/Toast';
+import { handleWriteError } from './storageCompression';
 
 let watchId = null;
 let lastPoint = null;
@@ -43,6 +45,11 @@ async function onPosition(pos) {
   currentPosition.value = { lat, lng, accuracy };
   locationDenied.value = false;
 
+  if (!localStorage.getItem('fp_first_location')) {
+    localStorage.setItem('fp_first_location', '1');
+    showToast('足迹追踪已开始');
+  }
+
   await checkSegmentGap(timestamp);
   let trackId = currentTrackId.value;
 
@@ -52,13 +59,31 @@ async function onPosition(pos) {
       startTime: timestamp,
       endTime: timestamp,
       distance: 0,
-      pointCount: 0
+      pointCount: 0,
+      totalDistance: 0,
+      totalDuration: 0,
+      cityDetected: '',
+      region: '',
+      routeType: 'unknown',
+      isManual: false,
+      createdAt: timestamp
     });
     currentTrackId.value = trackId;
+
+    const trackCount = await db.tracks.count();
+    if (trackCount === 1 && !localStorage.getItem('fp_first_track')) {
+      localStorage.setItem('fp_first_track', '1');
+      setTimeout(() => showToast('1 条轨迹已保存，可在记录 Tab 中查看'), 3000);
+    }
   }
 
   const point = { trackId, lat, lng, accuracy, timestamp };
-  await db.trackPoints.add(point);
+  try {
+    await db.trackPoints.add(point);
+  } catch (e) {
+    await handleWriteError();
+    return;
+  }
 
   lastPoint = { lat, lng, timestamp };
   todayPoints.value = [...todayPoints.value, point];

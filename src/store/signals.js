@@ -27,6 +27,7 @@ export const todayDistance = computed(() => {
 
 // Weather
 export const weatherData = signal(null);
+export const weatherOffline = signal(false);
 
 // UI state
 export const activeTab = signal('home');

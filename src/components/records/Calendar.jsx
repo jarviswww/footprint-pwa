@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'preact/hooks';
+import { useState, useEffect, useRef } from 'preact/hooks';
 import { getDatesWithData } from '../../db/queries';
 
 export function Calendar({ onSelectDate }) {
@@ -6,6 +6,8 @@ export function Calendar({ onSelectDate }) {
   const [month, setMonth] = useState(new Date().getMonth());
   const [datesWithData, setDatesWithData] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
+  const touchStartX = useRef(0);
+  const containerRef = useRef(null);
 
   useEffect(() => {
     getDatesWithData().then(setDatesWithData);
@@ -31,12 +33,19 @@ export function Calendar({ onSelectDate }) {
     onSelectDate(dateStr);
   };
 
+  const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
+  const handleTouchEnd = (e) => {
+    const diff = e.changedTouches[0].clientX - touchStartX.current;
+    if (diff > 60) prevMonth();
+    else if (diff < -60) nextMonth();
+  };
+
   const days = [];
   for (let i = 0; i < firstDay; i++) days.push(null);
   for (let d = 1; d <= daysInMonth; d++) days.push(d);
 
   return (
-    <div style={{ padding: '16px' }}>
+    <div style={{ padding: '16px' }} ref={containerRef} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <button onClick={prevMonth} style={navBtn}>&lt;</button>
         <span style={{ fontSize: '17px', fontWeight: 600 }}>{year}年{month + 1}月</span>

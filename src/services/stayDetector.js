@@ -48,7 +48,7 @@ async function detectStay() {
   if (isDuplicate) return;
 
   const geo = await reverseGeocode(lat, lng);
-  const category = classifyPlace(geo);
+  const category = classifyPlace(geo, slowSegment[midIdx].timestamp, duration);
 
   const checkin = {
     trackId: currentTrackId.value,
@@ -71,13 +71,28 @@ async function checkDuplicate(lat, lng) {
   return recent.some(c => haversineDistance(c.lat, c.lng, lat, lng) < DEDUP_RADIUS);
 }
 
-function classifyPlace(geo) {
-  if (!geo || !geo.name) return 'other';
+function classifyPlace(geo, timestamp, duration) {
+  if (!geo || !geo.name) {
+    return classifyByTime(timestamp);
+  }
   const name = geo.name;
   if (/公园|博物馆|景区|古迹|广场/.test(name)) return 'attraction';
   if (/餐厅|馆|店|咖啡|小吃/.test(name)) return 'restaurant';
-  if (/酒店|客栈|民宿|青旅/.test(name)) return 'hotel';
+  if (/酒店|客栈|民宿|青旅/.test(name)) {
+    if (duration >= 2 * 60 * 60 * 1000) return 'hotel';
+    return 'other';
+  }
   if (/站|机场|出口|停车场/.test(name)) return 'transport';
   if (/商场|超市|商店/.test(name)) return 'shop';
+  return classifyByTime(timestamp);
+}
+
+function classifyByTime(timestamp) {
+  const h = new Date(timestamp).getHours();
+  const m = new Date(timestamp).getMinutes();
+  const timeVal = h * 60 + m;
+  if ((timeVal >= 690 && timeVal <= 780) || (timeVal >= 1050 && timeVal <= 1170)) {
+    return 'restaurant';
+  }
   return 'other';
 }

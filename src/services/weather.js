@@ -1,4 +1,4 @@
-import { weatherData, currentPosition } from '../store/signals';
+import { weatherData, weatherOffline, currentPosition } from '../store/signals';
 
 let lastFetchTime = 0;
 const FETCH_INTERVAL = 5 * 60 * 1000;
@@ -27,9 +27,10 @@ export async function fetchWeather() {
       sunset: data.daily.sunset[0],
       city: null
     };
+    weatherOffline.value = false;
     lastFetchTime = now;
   } catch (e) {
-    // offline — keep existing data
+    weatherOffline.value = true;
   }
 }
 

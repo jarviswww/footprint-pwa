@@ -2,6 +2,7 @@ import { useState, useEffect } from 'preact/hooks';
 import { FilterBar } from './FilterBar';
 import { StatsCards } from './StatsCards';
 import { Charts } from './Charts';
+import { TravelCharts } from './TravelCharts';
 import { getTracksInRange } from '../../db/queries';
 
 export function AnalysisPage() {
@@ -23,6 +24,7 @@ export function AnalysisPage() {
       <FilterBar onFilter={setFilter} />
       <StatsCards tracks={tracks} />
       <Charts tracks={tracks} filter={filter} />
+      <TravelCharts tracks={tracks} filter={filter} />
     </div>
   );
 }
