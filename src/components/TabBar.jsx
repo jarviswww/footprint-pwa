@@ -13,10 +13,11 @@ export function TabBar() {
       display: 'flex',
       justifyContent: 'space-around',
       alignItems: 'center',
-      height: '50px',
+      minHeight: '50px',
       borderTop: '1px solid var(--divider-color)',
       background: 'var(--bg-card)',
-      paddingBottom: 'env(safe-area-inset-bottom)'
+      paddingBottom: 'env(safe-area-inset-bottom)',
+      flexShrink: 0
     }}>
       {tabs.map(tab => (
         <button

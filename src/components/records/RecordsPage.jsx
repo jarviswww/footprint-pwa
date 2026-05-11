@@ -8,7 +8,7 @@ export function RecordsPage({ onShare }) {
   const [viewingTrack, setViewingTrack] = useState(null);
 
   return (
-    <div style={{ height: '100%', overflow: 'auto', background: 'var(--bg-warm-white)' }}>
+    <div style={{ height: '100%', overflow: 'auto', background: 'var(--bg-warm-white)', paddingTop: 'env(safe-area-inset-top)' }}>
       <div style={{ padding: '16px 16px 0', fontSize: '20px', fontWeight: 700 }}>记录</div>
       <Calendar onSelectDate={setSelectedDate} />
       <DaySummary date={selectedDate} onViewTrack={setViewingTrack} />

@@ -34,7 +34,7 @@ export function AppPage() {
   };
 
   return (
-    <div style={{ height: '100%', overflow: 'auto', background: 'var(--bg-warm-white)', padding: '16px' }}>
+    <div style={{ height: '100%', overflow: 'auto', background: 'var(--bg-warm-white)', padding: 'calc(16px + env(safe-area-inset-top)) 16px 16px' }}>
       {/* Header */}
       <div style={{ marginBottom: '16px' }}>
         <div style={{ fontSize: '20px', fontWeight: 700 }}>足迹 · Footprint</div>

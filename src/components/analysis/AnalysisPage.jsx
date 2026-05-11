@@ -19,7 +19,7 @@ export function AnalysisPage() {
   }, [filter]);
 
   return (
-    <div style={{ height: '100%', overflow: 'auto', background: 'var(--bg-warm-white)' }}>
+    <div style={{ height: '100%', overflow: 'auto', background: 'var(--bg-warm-white)', paddingTop: 'env(safe-area-inset-top)' }}>
       <div style={{ padding: '16px 16px 8px', fontSize: '20px', fontWeight: 700 }}>分析</div>
       <FilterBar onFilter={setFilter} />
       <StatsCards tracks={tracks} />
