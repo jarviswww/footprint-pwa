@@ -1,5 +1,5 @@
 import { db } from '../db/index';
-import { currentPosition, isTracking, locationDenied, todayPoints, currentTrackId } from '../store/signals';
+import { currentPosition, isTracking, locationDenied, todayPoints, currentTrackId, todaySteps } from '../store/signals';
 import { haversineDistance, isValidCoord } from '../utils/geo';
 import { showToast } from '../components/common/Toast';
 import { handleWriteError } from './storageCompression';
@@ -10,6 +10,9 @@ let lastPoint = null;
 
 const ACCURACY_THRESHOLD = 100;
 const MIN_DISTANCE_M = 20;
+const WALK_SPEED_MIN = 0.8;
+const WALK_SPEED_MAX = 7.0;
+const STEPS_PER_METER = 1.4;
 
 export function startTracking() {
   if (!navigator.geolocation) return;
@@ -40,6 +43,16 @@ async function onPosition(pos) {
   if (lastPoint) {
     const dist = haversineDistance(lastPoint.lat, lastPoint.lng, lat, lng) * 1000;
     if (dist < MIN_DISTANCE_M) return;
+
+    const timeDiffH = (timestamp - lastPoint.timestamp) / 3600000;
+    if (timeDiffH > 0) {
+      const speedKmh = (dist / 1000) / timeDiffH;
+      if (speedKmh >= WALK_SPEED_MIN && speedKmh <= WALK_SPEED_MAX) {
+        todaySteps.value = todaySteps.value + Math.round(dist * STEPS_PER_METER);
+        localStorage.setItem('fp_today_steps', String(todaySteps.value));
+        localStorage.setItem('fp_today_steps_date', new Date().toISOString().slice(0, 10));
+      }
+    }
   }
 
   currentPosition.value = { lat, lng, accuracy };

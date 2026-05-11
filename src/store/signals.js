@@ -25,6 +25,20 @@ export const todayDistance = computed(() => {
   return total;
 });
 
+export const straightLineDistance = computed(() => {
+  const points = todayPoints.value;
+  if (points.length < 2) return 0;
+  return haversineDistance(
+    points[0].lat, points[0].lng,
+    points[points.length - 1].lat, points[points.length - 1].lng
+  );
+});
+
+const savedSteps = localStorage.getItem('fp_today_steps');
+const savedStepsDate = localStorage.getItem('fp_today_steps_date');
+const todayStr = new Date().toISOString().slice(0, 10);
+export const todaySteps = signal(savedStepsDate === todayStr ? parseInt(savedSteps || '0', 10) : 0);
+
 // Home & trips
 const savedHome = localStorage.getItem('fp_home_location');
 export const homeLocation = signal(savedHome ? JSON.parse(savedHome) : null);

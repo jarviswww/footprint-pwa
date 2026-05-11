@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'preact/hooks';
-import { todayDistance, weatherData, weatherOffline, currentPosition, locationDenied, todayTrips } from '../../store/signals';
+import { todayDistance, straightLineDistance, weatherData, weatherOffline, currentPosition, locationDenied, todayTrips, todaySteps } from '../../store/signals';
 import { reverseGeocode } from '../../services/nominatim';
 
 function getWeatherIcon(code) {
@@ -82,18 +82,18 @@ export function InfoCards() {
 
       {/* Secondary cards row */}
       <div style={{ display: 'flex', gap: '8px' }}>
-        {/* Sub card 1: today distance + checkin count */}
+        {/* Sub card 1: distances + trips */}
         <div style={{ ...cardStyle, flex: 1 }}>
-          <div style={{ fontSize: '20px', fontWeight: 700 }}>{dist.toFixed(1)}</div>
-          <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>公里 · {todayTrips.value} 次出行</div>
+          <div style={{ fontSize: '20px', fontWeight: 700 }}>{dist.toFixed(1)} <span style={{ fontSize: '12px', fontWeight: 400 }}>km</span></div>
+          <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+            直线 {straightLineDistance.value.toFixed(1)} km · {todayTrips.value} 次出行
+          </div>
         </div>
-        {/* Sub card 2: current street/POI name */}
-        <div style={{ ...cardStyle, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '13px', color: 'var(--text-primary)' }}>
-              {streetName || (currentPosition.value ? '解析中...' : '等待定位')}
-            </div>
-            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>当前位置</div>
+        {/* Sub card 2: steps + location */}
+        <div style={{ ...cardStyle, flex: 1 }}>
+          <div style={{ fontSize: '20px', fontWeight: 700 }}>{todaySteps.value.toLocaleString()}</div>
+          <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+            步 · {streetName || (currentPosition.value ? '解析中...' : '等待定位')}
           </div>
         </div>
       </div>
