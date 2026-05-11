@@ -7,6 +7,7 @@ import { AnalysisPage } from './components/analysis/AnalysisPage';
 import { AppPage } from './components/app-settings/AppPage';
 import { SharePreview } from './components/share/SharePreview';
 import { Toast } from './components/common/Toast';
+import { StatusBar } from './components/common/StatusBar';
 
 export function App() {
   const [shareData, setShareData] = useState(null);
@@ -18,6 +19,7 @@ export function App() {
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+        <StatusBar />
         {activeTab.value === 'home' && <HomePage />}
         {activeTab.value === 'records' && <RecordsPage onShare={handleShare} />}
         {activeTab.value === 'analysis' && <AnalysisPage />}
