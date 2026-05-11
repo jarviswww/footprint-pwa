@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'preact/hooks';
-import { todayDistance, straightLineDistance, weatherData, weatherOffline, currentPosition, locationDenied, todayTrips, todaySteps } from '../../store/signals';
+import { useState, useEffect, useRef } from 'preact/hooks';
+import { todayDistance, straightLineDistance, weatherData, weatherOffline, currentPosition, locationDenied, todayTrips, todaySteps, isTracking } from '../../store/signals';
 import { reverseGeocode } from '../../services/nominatim';
 
 function getWeatherIcon(code) {
@@ -14,22 +14,47 @@ function getWeatherIcon(code) {
   return '🌡';
 }
 
+function formatDate(ts) {
+  const d = new Date(ts);
+  return `${d.getMonth() + 1}月${d.getDate()}日 周${['日','一','二','三','四','五','六'][d.getDay()]}`;
+}
+
+function formatTime(ts) {
+  const d = new Date(ts);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
 export function InfoCards() {
   const denied = locationDenied.value;
   const weather = weatherData.value;
   const offline = weatherOffline.value;
   const dist = todayDistance.value;
+  const tracking = isTracking.value;
+  const pos = currentPosition.value;
+  const [clock, setClock] = useState(formatTime(Date.now()));
+  const [dateStr, setDateStr] = useState(formatDate(Date.now()));
   const [streetName, setStreetName] = useState('');
+  const clockRef = useRef(null);
 
   useEffect(() => {
-    const pos = currentPosition.value;
+    const tick = () => {
+      const now = Date.now();
+      setClock(formatTime(now));
+      setDateStr(formatDate(now));
+    };
+    tick();
+    clockRef.current = setInterval(tick, 1000);
+    return () => clearInterval(clockRef.current);
+  }, []);
+
+  useEffect(() => {
     if (!pos) return;
     reverseGeocode(pos.lat, pos.lng).then(result => {
       if (result) {
         setStreetName(result.name || result.road || result.district || '');
       }
     });
-  }, [currentPosition.value]);
+  }, [pos]);
 
   return (
     <div style={{
@@ -49,12 +74,30 @@ export function InfoCards() {
         justifyContent: 'space-between',
         alignItems: 'center'
       }}>
-        <span style={{ fontSize: '17px', fontWeight: 600, color: 'var(--text-primary)' }}>
-          足迹 · Footprint
-        </span>
-        <span style={{ fontSize: '15px', color: 'var(--text-secondary)' }}>
-          {dist.toFixed(1)} km
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* Pulsing recording dot */}
+          <span style={{
+            width: '10px',
+            height: '10px',
+            borderRadius: '50%',
+            background: tracking ? '#FF4D6D' : '#ccc',
+            display: 'inline-block',
+            boxShadow: tracking ? '0 0 0 0 rgba(255,77,109,0.4)' : 'none',
+            animation: tracking ? 'ping 1.5s ease-out infinite' : 'none',
+            flexShrink: 0
+          }} />
+          <span style={{ fontSize: '17px', fontWeight: 600, color: 'var(--text-primary)' }}>
+            足迹 · Footprint
+          </span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+          <span style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+            {clock}
+          </span>
+          <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+            {dateStr}
+          </span>
+        </div>
       </div>
 
       {/* Main card - city + weather icon + temp (current/high/low) */}
@@ -75,8 +118,13 @@ export function InfoCards() {
           </div>
         ) : offline ? (
           <span style={{ color: 'var(--text-tertiary)' }}>离线模式</span>
+        ) : pos ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--color-primary)', display: 'inline-block' }} />
+            <span style={{ color: 'var(--text-tertiary)' }}>加载天气中...</span>
+          </div>
         ) : (
-          <span style={{ color: 'var(--text-tertiary)' }}>加载天气中...</span>
+          <span style={{ color: 'var(--text-tertiary)' }}>等待定位</span>
         )}
       </div>
 
@@ -93,10 +141,16 @@ export function InfoCards() {
         <div style={{ ...cardStyle, flex: 1 }}>
           <div style={{ fontSize: '20px', fontWeight: 700 }}>{todaySteps.value.toLocaleString()}</div>
           <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-            步 · {streetName || (currentPosition.value ? '解析中...' : '等待定位')}
+            步 · {streetName || (pos ? '解析中...' : '等待定位')}
           </div>
         </div>
       </div>
+
+      <style>{`
+        @keyframes ping {
+          75%, 100% { transform: scale(1.8); opacity: 0; }
+        }
+      `}</style>
     </div>
   );
 }
