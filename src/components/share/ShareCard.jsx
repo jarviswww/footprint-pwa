@@ -144,10 +144,6 @@ async function drawMapWithTiles(canvas, points, checkins) {
     }
   });
 
-  // Dark overlay for contrast
-  ctx.fillStyle = 'rgba(26, 26, 46, 0.4)';
-  ctx.fillRect(0, 0, w, h);
-
   const toPixel = (lat, lng) => {
     const t = latLngToTile(lat, lng, zoom);
     const px = offsetX + (t.x - centerTile.x) * TILE_SIZE + (centerTile.x % 1) * TILE_SIZE;
@@ -225,6 +221,6 @@ function loadTile(tx, ty, zoom, px, py) {
     img.onload = () => resolve({ img, px, py });
     img.onerror = () => resolve(null);
     const s = ['a', 'b', 'c'][Math.abs(tx + ty) % 3];
-    img.src = `https://${s}.basemaps.cartocdn.com/dark_all/${zoom}/${tx}/${ty}.png`;
+    img.src = `https://${s}.tile.openstreetmap.org/${zoom}/${tx}/${ty}.png`;
   });
 }
